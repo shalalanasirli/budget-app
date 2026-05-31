@@ -16,11 +16,19 @@ You are working on a budgeting-first expense tracking application.
 - Avoid complexity unless it directly improves user value.
 
 ## Architecture Rules
-- Use layered architecture:
-  Controllers → Services → Repositories
+
+Backend follows Clean Architecture with four projects:
+- `BudgetApp.Domain` — entities and repository/service interfaces only; no dependencies on other projects
+- `BudgetApp.Application` — DTOs and application services (e.g. JwtService); depends on Domain only
+- `BudgetApp.Infrastructure` — EF Core DbContext, repository implementations, stub services; depends on Domain
+- `BudgetApp.API` — ASP.NET Core controllers and Program.cs; depends on Application and Infrastructure
+
+Dependency rule: outer layers may depend on inner layers; inner layers must never depend on outer layers.
+
 - No business logic in controllers.
-- Use DTOs for all API communication.
-- Do not access database directly from controllers.
+- Use DTOs for all API communication; DTOs live in Application.
+- Entities live in Domain; never reference Application or Infrastructure types from Domain.
+- Do not access the database directly from controllers.
 
 ## Data Rules
 - Store all receipts and images in object storage only.

@@ -7,6 +7,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{2557E983-FC2
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BudgetApp.API", "src\BudgetApp.API\BudgetApp.API.csproj", "{25829B4C-06A2-4530-96E8-E3342275F9FF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BudgetApp.Domain", "src\BudgetApp.Domain\BudgetApp.Domain.csproj", "{A1B2C3D4-0001-0000-0000-000000000001}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BudgetApp.Application", "src\BudgetApp.Application\BudgetApp.Application.csproj", "{A1B2C3D4-0002-0000-0000-000000000002}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BudgetApp.Infrastructure", "src\BudgetApp.Infrastructure\BudgetApp.Infrastructure.csproj", "{A1B2C3D4-0003-0000-0000-000000000003}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,8 +26,23 @@ Global
 		{25829B4C-06A2-4530-96E8-E3342275F9FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{25829B4C-06A2-4530-96E8-E3342275F9FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{25829B4C-06A2-4530-96E8-E3342275F9FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-0001-0000-0000-000000000001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-0001-0000-0000-000000000001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-0001-0000-0000-000000000001}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-0001-0000-0000-000000000001}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-0002-0000-0000-000000000002}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-0002-0000-0000-000000000002}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-0002-0000-0000-000000000002}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-0002-0000-0000-000000000002}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-0003-0000-0000-000000000003}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-0003-0000-0000-000000000003}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-0003-0000-0000-000000000003}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-0003-0000-0000-000000000003}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{25829B4C-06A2-4530-96E8-E3342275F9FF} = {2557E983-FC24-431E-88D2-166FE23D1116}
+		{A1B2C3D4-0001-0000-0000-000000000001} = {2557E983-FC24-431E-88D2-166FE23D1116}
+		{A1B2C3D4-0002-0000-0000-000000000002} = {2557E983-FC24-431E-88D2-166FE23D1116}
+		{A1B2C3D4-0003-0000-0000-000000000003} = {2557E983-FC24-431E-88D2-166FE23D1116}
 	EndGlobalSection
 EndGlobal

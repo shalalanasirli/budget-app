@@ -1,7 +1,7 @@
-using BudgetApp.API.DTOs;
-using BudgetApp.API.Models;
-using BudgetApp.API.Repositories.Interfaces;
-using BudgetApp.API.Services;
+using BudgetApp.Application.DTOs;
+using BudgetApp.Domain.Entities;
+using BudgetApp.Domain.Interfaces;
+using BudgetApp.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BudgetApp.API.Controllers;

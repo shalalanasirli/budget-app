@@ -1,9 +1,9 @@
 using System.Text;
-using BudgetApp.API.Data;
-using BudgetApp.API.Repositories;
-using BudgetApp.API.Repositories.Interfaces;
-using BudgetApp.API.Services;
-using BudgetApp.API.Services.Interfaces;
+using BudgetApp.Application.Services;
+using BudgetApp.Domain.Interfaces;
+using BudgetApp.Infrastructure.Data;
+using BudgetApp.Infrastructure.Repositories;
+using BudgetApp.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;

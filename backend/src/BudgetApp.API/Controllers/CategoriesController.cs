@@ -1,5 +1,5 @@
-using BudgetApp.API.DTOs;
-using BudgetApp.API.Repositories.Interfaces;
+using BudgetApp.Application.DTOs;
+using BudgetApp.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
