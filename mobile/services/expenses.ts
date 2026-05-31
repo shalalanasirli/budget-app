@@ -4,6 +4,8 @@ export interface ExpenseResponse {
     id: string;
     categoryId: string;
     categoryName: string;
+    walletId: string;
+    walletName: string;
     amount: number;
     merchant: string | null;
     description: string | null;
@@ -18,6 +20,7 @@ export interface CreateExpensePayload {
     merchant?: string;
     description?: string;
     date: string;
+    walletId: string;
 }
 
 export const expenseService = {

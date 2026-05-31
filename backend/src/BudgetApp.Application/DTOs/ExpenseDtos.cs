@@ -15,6 +15,9 @@ public class CreateExpenseRequest
 
     [Required]
     public DateOnly Date { get; set; }
+
+    [Required]
+    public Guid WalletId { get; set; }
 }
 
 public class ExpenseResponse
@@ -22,6 +25,8 @@ public class ExpenseResponse
     public Guid Id { get; set; }
     public Guid CategoryId { get; set; }
     public string CategoryName { get; set; } = string.Empty;
+    public Guid WalletId { get; set; }
+    public string WalletName { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public string? Merchant { get; set; }
     public string? Description { get; set; }

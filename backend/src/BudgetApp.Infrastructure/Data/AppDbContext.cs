@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Budget> Budgets => Set<Budget>();
     public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<Wallet> Wallets => Set<Wallet>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +58,21 @@ public class AppDbContext : DbContext
                   .WithMany(c => c.Expenses)
                   .HasForeignKey(e => e.CategoryId)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Wallet)
+                  .WithMany()
+                  .HasForeignKey(e => e.WalletId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Wallet>(entity =>
+        {
+            entity.Property(w => w.Balance).HasColumnType("decimal(18,2)");
+
+            entity.HasOne(w => w.User)
+                  .WithMany(u => u.Wallets)
+                  .HasForeignKey(w => w.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Category>().HasData(DefaultCategories.All);

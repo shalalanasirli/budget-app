@@ -7,6 +7,6 @@ public interface IBudgetRepository
     Task<IEnumerable<Budget>> GetForUserAsync(Guid userId, int month, int year);
     Task<Budget?> GetByIdAsync(Guid id);
     Task<Budget> CreateAsync(Budget budget);
-    Task UpdateAsync(Budget budget);
+    Task SaveAsync();
     Task DeleteAsync(Budget budget);
 }

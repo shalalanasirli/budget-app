@@ -15,6 +15,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { expenseService } from '@/services/expenses';
 import { categoryService, type Category } from '@/services/categories';
+import { walletService, type Wallet } from '@/services/wallets';
 import { useScanStore } from '@/store/scan';
 
 function toDateString(d: Date): string {
@@ -38,12 +39,16 @@ export default function AddExpenseScreen() {
     const [description, setDescription] = useState('');
     const [date, setDate] = useState(new Date());
     const [categories, setCategories] = useState<Category[]>([]);
-    const [pickerVisible, setPickerVisible] = useState(false);
+    const [wallets, setWallets] = useState<Wallet[]>([]);
+    const [walletId, setWalletId] = useState('');
+    const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+    const [walletPickerVisible, setWalletPickerVisible] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
         categoryService.getAll().then(({ data }) => setCategories(data));
+        walletService.getAll().then(({ data }) => setWallets(data));
     }, []);
 
     useFocusEffect(
@@ -59,6 +64,7 @@ export default function AddExpenseScreen() {
     );
 
     const selectedCategory = categories.find((c) => c.id === categoryId);
+    const selectedWallet = wallets.find((w) => w.id === walletId);
 
     const handleSave = async () => {
         const amountNum = parseFloat(amount);
@@ -70,6 +76,10 @@ export default function AddExpenseScreen() {
             setError('Select a category.');
             return;
         }
+        if (!walletId) {
+            setError('Select a wallet.');
+            return;
+        }
         setError('');
         setSaving(true);
         try {
@@ -79,7 +89,9 @@ export default function AddExpenseScreen() {
                 merchant: merchant.trim() || undefined,
                 description: description.trim() || undefined,
                 date: toDateString(date),
+                walletId,
             });
+            queryClient.invalidateQueries({ queryKey: ['wallets'] });
             queryClient.invalidateQueries({ queryKey: ['expenses'] });
             queryClient.invalidateQueries({ queryKey: ['budgets'] });
             router.back();
@@ -124,12 +136,34 @@ export default function AddExpenseScreen() {
                     <Text style={styles.label}>Category</Text>
                     <Pressable
                         style={styles.input}
-                        onPress={() => setPickerVisible(true)}
+                        onPress={() => setCategoryPickerVisible(true)}
                     >
                         <Text style={selectedCategory ? styles.inputText : styles.inputPlaceholder}>
                             {selectedCategory?.name ?? 'Select category'}
                         </Text>
                     </Pressable>
+                </View>
+
+                <View style={styles.field}>
+                    <Text style={styles.label}>Wallet</Text>
+                    {wallets.length === 0 ? (
+                        <View style={styles.noWalletBanner}>
+                            <Text style={styles.noWalletText}>
+                                No wallets yet — add one from the dashboard before logging an expense.
+                            </Text>
+                        </View>
+                    ) : (
+                        <Pressable
+                            style={styles.input}
+                            onPress={() => setWalletPickerVisible(true)}
+                        >
+                            <Text style={selectedWallet ? styles.inputText : styles.inputPlaceholder}>
+                                {selectedWallet
+                                    ? `${selectedWallet.name} · ${selectedWallet.currency} ${selectedWallet.balance.toFixed(2)}`
+                                    : 'Select wallet'}
+                            </Text>
+                        </Pressable>
+                    )}
                 </View>
 
                 <View style={styles.field}>
@@ -189,13 +223,14 @@ export default function AddExpenseScreen() {
                 </Pressable>
             </ScrollView>
 
+            {/* Category picker */}
             <Modal
-                visible={pickerVisible}
+                visible={categoryPickerVisible}
                 transparent
                 animationType="slide"
-                onRequestClose={() => setPickerVisible(false)}
+                onRequestClose={() => setCategoryPickerVisible(false)}
             >
-                <Pressable style={styles.pickerBackdrop} onPress={() => setPickerVisible(false)}>
+                <Pressable style={styles.pickerBackdrop} onPress={() => setCategoryPickerVisible(false)}>
                     <Pressable style={styles.pickerSheet} onPress={() => {}}>
                         <Text style={styles.pickerTitle}>Select Category</Text>
                         {categories.map((c) => (
@@ -207,7 +242,7 @@ export default function AddExpenseScreen() {
                                 ]}
                                 onPress={() => {
                                     setCategoryId(c.id);
-                                    setPickerVisible(false);
+                                    setCategoryPickerVisible(false);
                                 }}
                             >
                                 <Text style={[
@@ -215,6 +250,43 @@ export default function AddExpenseScreen() {
                                     categoryId === c.id && styles.pickerItemTextSelected,
                                 ]}>
                                     {c.name}
+                                </Text>
+                            </Pressable>
+                        ))}
+                    </Pressable>
+                </Pressable>
+            </Modal>
+
+            {/* Wallet picker */}
+            <Modal
+                visible={walletPickerVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setWalletPickerVisible(false)}
+            >
+                <Pressable style={styles.pickerBackdrop} onPress={() => setWalletPickerVisible(false)}>
+                    <Pressable style={styles.pickerSheet} onPress={() => {}}>
+                        <Text style={styles.pickerTitle}>Select Wallet</Text>
+                        {wallets.map((w) => (
+                            <Pressable
+                                key={w.id}
+                                style={[
+                                    styles.pickerItem,
+                                    walletId === w.id && styles.pickerItemSelected,
+                                ]}
+                                onPress={() => {
+                                    setWalletId(w.id);
+                                    setWalletPickerVisible(false);
+                                }}
+                            >
+                                <Text style={[
+                                    styles.pickerItemText,
+                                    walletId === w.id && styles.pickerItemTextSelected,
+                                ]}>
+                                    {w.name}
+                                    <Text style={styles.walletBalanceHint}>
+                                        {'  '}{w.currency} {w.balance.toFixed(2)}
+                                    </Text>
                                 </Text>
                             </Pressable>
                         ))}
@@ -351,5 +423,21 @@ const styles = StyleSheet.create({
     pickerItemTextSelected: {
         color: '#2563EB',
         fontWeight: '600',
+    },
+    walletBalanceHint: {
+        fontSize: 13,
+        color: '#9CA3AF',
+        fontWeight: '400',
+    },
+    noWalletBanner: {
+        borderWidth: 1,
+        borderColor: '#FCA5A5',
+        borderRadius: 8,
+        backgroundColor: '#FEF2F2',
+        padding: 14,
+    },
+    noWalletText: {
+        fontSize: 14,
+        color: '#DC2626',
     },
 });

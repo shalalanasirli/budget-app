@@ -8,4 +8,6 @@ export interface Category {
 
 export const categoryService = {
     getAll: () => api.get<Category[]>('/categories'),
+    create: (name: string) => api.post<Category>('/categories', { name }),
+    deleteCategory: (id: string) => api.delete(`/categories/${id}`),
 };

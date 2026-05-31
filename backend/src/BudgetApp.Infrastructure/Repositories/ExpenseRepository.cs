@@ -18,6 +18,7 @@ public class ExpenseRepository : IExpenseRepository
     {
         var query = _context.Expenses
                             .Include(e => e.Category)
+                            .Include(e => e.Wallet)
                             .Where(e => e.UserId == userId);
 
         if (categoryId.HasValue)

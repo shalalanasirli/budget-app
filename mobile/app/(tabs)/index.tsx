@@ -1,7 +1,18 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import {
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from 'react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { budgetService } from '@/services/budgets';
+import { walletService, type Wallet } from '@/services/wallets';
 import BudgetProgressBar from '@/components/BudgetProgressBar';
 import { useAuthStore } from '@/store/auth';
 
@@ -21,11 +32,35 @@ const MONTH_NAMES = [
     'September', 'October', 'November', 'December',
 ];
 
+function WalletCard({ wallet, symbol }: { wallet: Wallet; symbol: string }) {
+    return (
+        <View style={styles.walletCard}>
+            <Text style={styles.walletCardName} numberOfLines={1}>{wallet.name}</Text>
+            <Text style={styles.walletCardBalance}>
+                {symbol} {wallet.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </Text>
+            <Text style={styles.walletCardCurrency}>{wallet.currency}</Text>
+        </View>
+    );
+}
+
 export default function HomeScreen() {
+    const queryClient = useQueryClient();
     const currency = useAuthStore((s) => s.user?.currency ?? 'USD');
     const now = new Date();
     const [month, setMonth] = useState(now.getMonth() + 1);
     const [year, setYear] = useState(now.getFullYear());
+
+    // Add wallet modal
+    const [addWalletVisible, setAddWalletVisible] = useState(false);
+    const [walletName, setWalletName] = useState('');
+    const [walletBalance, setWalletBalance] = useState('');
+    const [addingWallet, setAddingWallet] = useState(false);
+
+    const { data: wallets } = useQuery({
+        queryKey: ['wallets'],
+        queryFn: async () => (await walletService.getAll()).data as Wallet[],
+    });
 
     const { data: budgets, isLoading, isError, refetch } = useQuery({
         queryKey: ['budgets', month, year],
@@ -51,8 +86,52 @@ export default function HomeScreen() {
         else setMonth((m) => m + 1);
     };
 
+    const handleAddWallet = async () => {
+        const name = walletName.trim();
+        const balance = parseFloat(walletBalance);
+        if (!name) {
+            Alert.alert('Missing name', 'Enter a wallet name.');
+            return;
+        }
+        if (isNaN(balance) || balance < 0) {
+            Alert.alert('Invalid balance', 'Enter a valid starting balance.');
+            return;
+        }
+        setAddingWallet(true);
+        try {
+            await walletService.create(name, balance);
+            queryClient.invalidateQueries({ queryKey: ['wallets'] });
+            setWalletName('');
+            setWalletBalance('');
+            setAddWalletVisible(false);
+        } catch {
+            Alert.alert('Error', 'Failed to create wallet.');
+        } finally {
+            setAddingWallet(false);
+        }
+    };
+
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+            {/* Wallet strip */}
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.walletStrip}
+                contentContainerStyle={styles.walletStripContent}
+            >
+                {wallets?.map((w) => (
+                    <WalletCard key={w.id} wallet={w} symbol={w.currency} />
+                ))}
+                <Pressable
+                    style={styles.addWalletCard}
+                    onPress={() => setAddWalletVisible(true)}
+                >
+                    <Text style={styles.addWalletIcon}>+</Text>
+                </Pressable>
+            </ScrollView>
+
+            {/* Month nav */}
             <View style={styles.monthNav}>
                 <Pressable onPress={goToPrev} style={styles.navBtn}>
                     <Text style={styles.navArrow}>‹</Text>
@@ -98,6 +177,55 @@ export default function HomeScreen() {
                     limit={b.monthlyLimit}
                 />
             ))}
+
+            {/* Add wallet modal */}
+            <Modal
+                visible={addWalletVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setAddWalletVisible(false)}
+            >
+                <Pressable
+                    style={styles.modalBackdrop}
+                    onPress={() => setAddWalletVisible(false)}
+                >
+                    <Pressable style={styles.modalSheet} onPress={() => {}}>
+                        <Text style={styles.modalTitle}>New Wallet</Text>
+
+                        <Text style={styles.inputLabel}>Name</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            value={walletName}
+                            onChangeText={setWalletName}
+                            placeholder="e.g. Cash, Savings"
+                            placeholderTextColor="#9CA3AF"
+                            autoFocus
+                        />
+
+                        <Text style={styles.inputLabel}>Starting Balance</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            value={walletBalance}
+                            onChangeText={setWalletBalance}
+                            placeholder="0.00"
+                            placeholderTextColor="#9CA3AF"
+                            keyboardType="decimal-pad"
+                        />
+
+                        <Pressable
+                            style={[styles.modalBtn, addingWallet && styles.disabled]}
+                            onPress={handleAddWallet}
+                            disabled={addingWallet}
+                        >
+                            {addingWallet ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.modalBtnText}>Add Wallet</Text>
+                            )}
+                        </Pressable>
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </ScrollView>
     );
 }
@@ -111,6 +239,58 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingBottom: 32,
     },
+    // Wallet strip
+    walletStrip: {
+        marginHorizontal: -24,
+        marginTop: 16,
+        flexGrow: 0,
+    },
+    walletStripContent: {
+        paddingHorizontal: 24,
+        gap: 12,
+        paddingBottom: 4,
+    },
+    walletCard: {
+        width: 148,
+        backgroundColor: '#1E3A8A',
+        borderRadius: 16,
+        padding: 16,
+        justifyContent: 'space-between',
+        minHeight: 96,
+    },
+    walletCardName: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.75)',
+        fontWeight: '500',
+        marginBottom: 8,
+    },
+    walletCardBalance: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#fff',
+    },
+    walletCardCurrency: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.6)',
+        marginTop: 4,
+    },
+    addWalletCard: {
+        width: 148,
+        minHeight: 96,
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        borderStyle: 'dashed',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F9FAFB',
+    },
+    addWalletIcon: {
+        fontSize: 32,
+        color: '#9CA3AF',
+        lineHeight: 36,
+    },
+    // Month nav
     monthNav: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -170,4 +350,50 @@ const styles = StyleSheet.create({
         color: '#2563EB',
         marginTop: 4,
     },
+    // Add wallet modal
+    modalBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'flex-end',
+    },
+    modalSheet: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 24,
+        paddingBottom: 40,
+        gap: 8,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    inputLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+        textTransform: 'uppercase',
+        letterSpacing: 0.4,
+        marginBottom: 4,
+    },
+    modalInput: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 10,
+        padding: 13,
+        fontSize: 15,
+        color: '#111827',
+        marginBottom: 8,
+    },
+    modalBtn: {
+        backgroundColor: '#2563EB',
+        borderRadius: 12,
+        padding: 15,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    modalBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+    disabled: { opacity: 0.5 },
 });

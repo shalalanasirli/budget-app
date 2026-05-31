@@ -10,8 +10,10 @@ public class Expense
     public string? Description { get; set; }
     public DateOnly Date { get; set; }
     public string? ReceiptImageUrl { get; set; }
+    public Guid WalletId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public User User { get; set; } = null!;
     public Category Category { get; set; } = null!;
+    public Wallet Wallet { get; set; } = null!;
 }

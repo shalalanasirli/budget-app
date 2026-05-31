@@ -21,4 +21,17 @@ public class CategoryRepository : ICategoryRepository
 
     public Task<Category?> GetByIdAsync(Guid id) =>
         _context.Categories.FirstOrDefaultAsync(c => c.Id == id);
+
+    public async Task<Category> CreateAsync(Category category)
+    {
+        _context.Categories.Add(category);
+        await _context.SaveChangesAsync();
+        return category;
+    }
+
+    public Task DeleteAsync(Category category)
+    {
+        _context.Categories.Remove(category);
+        return _context.SaveChangesAsync();
+    }
 }

@@ -53,6 +53,7 @@ function AuthGuard() {
                 name="scan-receipt"
                 options={{ presentation: 'modal', title: 'Scan Receipt' }}
             />
+            <Stack.Screen name="settings" options={{ headerShown: false }} />
         </Stack>
     );
 }

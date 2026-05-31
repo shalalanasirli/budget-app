@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth';
 
@@ -8,9 +9,15 @@ const HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
 export default function ProfileMenu() {
     const [visible, setVisible] = useState(false);
     const { user, clearAuth } = useAuthStore();
+    const router = useRouter();
     const insets = useSafeAreaInsets();
 
     const initial = user?.email?.[0]?.toUpperCase() ?? '?';
+
+    const handleSettings = () => {
+        setVisible(false);
+        router.push('/settings');
+    };
 
     const handleLogout = () => {
         setVisible(false);
@@ -38,8 +45,12 @@ export default function ProfileMenu() {
                             {user?.email}
                         </Text>
                         <View style={styles.divider} />
+                        <Pressable style={styles.menuItem} onPress={handleSettings}>
+                            <Text style={styles.menuItemText}>Settings</Text>
+                        </Pressable>
+                        <View style={styles.divider} />
                         <Pressable style={styles.menuItem} onPress={handleLogout}>
-                            <Text style={styles.menuItemText}>Log out</Text>
+                            <Text style={[styles.menuItemText, styles.logoutText]}>Log out</Text>
                         </Pressable>
                     </Pressable>
                 </Pressable>
@@ -95,7 +106,10 @@ const styles = StyleSheet.create({
     },
     menuItemText: {
         fontSize: 15,
-        color: '#DC2626',
+        color: '#111827',
         fontWeight: '500',
+    },
+    logoutText: {
+        color: '#DC2626',
     },
 });

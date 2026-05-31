@@ -30,11 +30,7 @@ public class BudgetRepository : IBudgetRepository
         return budget;
     }
 
-    public Task UpdateAsync(Budget budget)
-    {
-        _context.Budgets.Update(budget);
-        return _context.SaveChangesAsync();
-    }
+    public Task SaveAsync() => _context.SaveChangesAsync();
 
     public Task DeleteAsync(Budget budget)
     {

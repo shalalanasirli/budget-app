@@ -43,7 +43,7 @@ public class UsersController : BaseController
         if (request.IsOnboarded.HasValue)
             user.IsOnboarded = request.IsOnboarded.Value;
 
-        await _userRepo.UpdateAsync(user);
+        await _userRepo.SaveAsync();
 
         return Ok(new UserResponse
         {

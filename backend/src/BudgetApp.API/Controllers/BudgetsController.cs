@@ -66,7 +66,7 @@ public class BudgetsController : BaseController
         if (budget == null || budget.UserId != UserId) return NotFound();
 
         budget.MonthlyLimit = request.MonthlyLimit;
-        await _budgetRepo.UpdateAsync(budget);
+        await _budgetRepo.SaveAsync();
 
         return NoContent();
     }
