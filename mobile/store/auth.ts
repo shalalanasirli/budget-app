@@ -16,10 +16,11 @@ interface AuthState {
     isLoading: boolean;
     hydrateFromStorage: () => Promise<void>;
     setAuth: (token: string, user: AuthUser) => Promise<void>;
+    updateUser: (partial: Partial<AuthUser>) => Promise<void>;
     clearAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
     token: null,
     user: null,
     isLoading: true,
@@ -41,6 +42,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     setAuth: async (token, user) => {
         await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify({ token, user }));
         set({ token, user });
+    },
+
+    updateUser: async (partial) => {
+        const { token, user } = get();
+        if (!user) return;
+        const updated = { ...user, ...partial };
+        await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify({ token, user: updated }));
+        set({ user: updated });
     },
 
     clearAuth: async () => {

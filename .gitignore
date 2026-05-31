@@ -3,6 +3,7 @@
 
 # IDE / AI tools
 .idea/
+.vscode/
 mobile/.claude/
 
 # Environment / secrets
