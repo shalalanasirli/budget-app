@@ -68,6 +68,32 @@ public class ExpensesController : BaseController
         return StatusCode(201);
     }
 
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, UpdateExpenseRequest request)
+    {
+        var expense = await _expenseRepo.GetByIdAsync(id, UserId);
+        if (expense == null) return NotFound();
+
+        var newWallet = await _walletRepo.GetByIdAsync(request.WalletId, UserId);
+        if (newWallet == null) return BadRequest(new { message = "Wallet not found." });
+
+        // Refund the old wallet, then charge the new one
+        var oldWallet = await _walletRepo.GetByIdAsync(expense.WalletId, UserId);
+        if (oldWallet != null) oldWallet.Balance += expense.Amount;
+        newWallet.Balance -= request.Amount;
+
+        expense.CategoryId = request.CategoryId;
+        expense.Amount = request.Amount;
+        expense.Merchant = string.IsNullOrWhiteSpace(request.Merchant) ? null : request.Merchant.Trim();
+        expense.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+        expense.Date = request.Date;
+        expense.WalletId = request.WalletId;
+
+        await _walletRepo.SaveAsync();
+
+        return NoContent();
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {

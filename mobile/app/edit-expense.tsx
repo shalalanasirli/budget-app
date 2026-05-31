@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -13,12 +13,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { expenseService } from '@/services/expenses';
 import { categoryService, type Category } from '@/services/categories';
 import { walletService, type Wallet } from '@/services/wallets';
-import { useScanStore } from '@/store/scan';
+import { useEditExpenseStore } from '@/store/edit-expense';
 
 function toDateString(d: Date): string {
     const y = d.getFullYear();
@@ -27,20 +27,22 @@ function toDateString(d: Date): string {
     return `${y}-${m}-${day}`;
 }
 
-function displayDate(d: Date): string {
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+function parseDate(s: string): Date {
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
 }
 
-export default function AddExpenseScreen() {
+export default function EditExpenseScreen() {
     const router = useRouter();
     const queryClient = useQueryClient();
+    const { expense, clear } = useEditExpenseStore();
 
-    const [amount, setAmount] = useState('');
-    const [categoryId, setCategoryId] = useState('');
-    const [walletId, setWalletId] = useState('');
-    const [merchant, setMerchant] = useState('');
-    const [description, setDescription] = useState('');
-    const [date, setDate] = useState(new Date());
+    const [amount, setAmount] = useState(expense?.amount.toString() ?? '');
+    const [categoryId, setCategoryId] = useState(expense?.categoryId ?? '');
+    const [walletId, setWalletId] = useState(expense?.walletId ?? '');
+    const [merchant, setMerchant] = useState(expense?.merchant ?? '');
+    const [description, setDescription] = useState(expense?.description ?? '');
+    const [date, setDate] = useState(expense ? parseDate(expense.date) : new Date());
     const [categories, setCategories] = useState<Category[]>([]);
     const [wallets, setWallets] = useState<Wallet[]>([]);
     const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
@@ -54,22 +56,11 @@ export default function AddExpenseScreen() {
         walletService.getAll().then(({ data }) => setWallets(data));
     }, []);
 
-    useFocusEffect(
-        useCallback(() => {
-            const scan = useScanStore.getState().result;
-            if (scan) {
-                if (scan.merchant) setMerchant(scan.merchant);
-                if (scan.amount) setAmount(scan.amount.toString());
-                if (scan.categoryId) setCategoryId(scan.categoryId);
-                useScanStore.getState().clearResult();
-            }
-        }, []),
-    );
-
     const selectedCategory = categories.find((c) => c.id === categoryId);
     const selectedWallet = wallets.find((w) => w.id === walletId);
 
     const handleSave = async () => {
+        if (!expense) return;
         const amountNum = parseFloat(amount);
         if (isNaN(amountNum) || amountNum <= 0) { setError('Enter a valid amount.'); return; }
         if (!categoryId) { setError('Select a category.'); return; }
@@ -77,7 +68,7 @@ export default function AddExpenseScreen() {
         setError('');
         setSaving(true);
         try {
-            await expenseService.create({
+            await expenseService.update(expense.id, {
                 categoryId,
                 amount: amountNum,
                 merchant: merchant.trim() || undefined,
@@ -88,27 +79,27 @@ export default function AddExpenseScreen() {
             queryClient.invalidateQueries({ queryKey: ['expenses'] });
             queryClient.invalidateQueries({ queryKey: ['budgets'] });
             queryClient.invalidateQueries({ queryKey: ['wallets'] });
+            clear();
             router.back();
         } catch {
-            setError('Failed to save expense. Please try again.');
+            setError('Failed to save changes. Please try again.');
         } finally {
             setSaving(false);
         }
     };
 
+    const handleCancel = () => { clear(); router.back(); };
+
+    if (!expense) { router.back(); return null; }
+
     return (
         <SafeAreaView style={styles.safe} edges={['top']}>
-            {/* Custom header */}
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.headerBtn}>
+                <Pressable onPress={handleCancel} style={styles.headerBtn}>
                     <Text style={styles.cancelText}>Cancel</Text>
                 </Pressable>
-                <Text style={styles.headerTitle}>Add Expense</Text>
-                <Pressable
-                    onPress={handleSave}
-                    disabled={saving}
-                    style={styles.headerBtn}
-                >
+                <Text style={styles.headerTitle}>Edit Expense</Text>
+                <Pressable onPress={handleSave} disabled={saving} style={styles.headerBtn}>
                     {saving
                         ? <ActivityIndicator color="#2563EB" size="small" />
                         : <Text style={styles.saveText}>Save</Text>}
@@ -119,11 +110,7 @@ export default function AddExpenseScreen() {
                 style={styles.flex}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-                <ScrollView
-                    contentContainerStyle={styles.content}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    {/* Amount */}
+                <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
                     <View style={styles.field}>
                         <Text style={styles.label}>Amount</Text>
                         <TextInput
@@ -133,11 +120,9 @@ export default function AddExpenseScreen() {
                             onChangeText={setAmount}
                             keyboardType="decimal-pad"
                             placeholderTextColor="#9CA3AF"
-                            autoFocus
                         />
                     </View>
 
-                    {/* Category */}
                     <View style={styles.field}>
                         <Text style={styles.label}>Category</Text>
                         <Pressable style={styles.input} onPress={() => setCategoryPickerVisible(true)}>
@@ -147,27 +132,17 @@ export default function AddExpenseScreen() {
                         </Pressable>
                     </View>
 
-                    {/* Wallet */}
                     <View style={styles.field}>
                         <Text style={styles.label}>Wallet</Text>
-                        {wallets.length === 0 ? (
-                            <View style={styles.noWalletBanner}>
-                                <Text style={styles.noWalletText}>
-                                    No wallets yet — add one from the dashboard first.
-                                </Text>
-                            </View>
-                        ) : (
-                            <Pressable style={styles.input} onPress={() => setWalletPickerVisible(true)}>
-                                <Text style={selectedWallet ? styles.inputText : styles.inputPlaceholder}>
-                                    {selectedWallet
-                                        ? `${selectedWallet.name} · ${selectedWallet.currency} ${selectedWallet.balance.toFixed(2)}`
-                                        : 'Select wallet'}
-                                </Text>
-                            </Pressable>
-                        )}
+                        <Pressable style={styles.input} onPress={() => setWalletPickerVisible(true)}>
+                            <Text style={selectedWallet ? styles.inputText : styles.inputPlaceholder}>
+                                {selectedWallet
+                                    ? `${selectedWallet.name} · ${selectedWallet.currency} ${selectedWallet.balance.toFixed(2)}`
+                                    : 'Select wallet'}
+                            </Text>
+                        </Pressable>
                     </View>
 
-                    {/* Merchant */}
                     <View style={styles.field}>
                         <Text style={styles.label}>Merchant (optional)</Text>
                         <TextInput
@@ -179,7 +154,6 @@ export default function AddExpenseScreen() {
                         />
                     </View>
 
-                    {/* Note */}
                     <View style={styles.field}>
                         <Text style={styles.label}>Note (optional)</Text>
                         <TextInput
@@ -191,7 +165,6 @@ export default function AddExpenseScreen() {
                         />
                     </View>
 
-                    {/* Date */}
                     <View style={styles.field}>
                         <Text style={styles.label}>Date</Text>
                         {Platform.OS === 'ios' ? (
@@ -205,17 +178,16 @@ export default function AddExpenseScreen() {
                         ) : (
                             <>
                                 <Pressable style={styles.input} onPress={() => setShowAndroidDatePicker(true)}>
-                                    <Text style={styles.inputText}>{displayDate(date)}</Text>
+                                    <Text style={styles.inputText}>
+                                        {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                    </Text>
                                 </Pressable>
                                 {showAndroidDatePicker && (
                                     <DateTimePicker
                                         value={date}
                                         mode="date"
                                         display="default"
-                                        onChange={(_, selected) => {
-                                            setShowAndroidDatePicker(false);
-                                            if (selected) setDate(selected);
-                                        }}
+                                        onChange={(_, selected) => { setShowAndroidDatePicker(false); if (selected) setDate(selected); }}
                                     />
                                 )}
                             </>
@@ -226,13 +198,7 @@ export default function AddExpenseScreen() {
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            {/* Category picker */}
-            <Modal
-                visible={categoryPickerVisible}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setCategoryPickerVisible(false)}
-            >
+            <Modal visible={categoryPickerVisible} transparent animationType="slide" onRequestClose={() => setCategoryPickerVisible(false)}>
                 <Pressable style={styles.pickerBackdrop} onPress={() => setCategoryPickerVisible(false)}>
                     <Pressable style={styles.pickerSheet} onPress={() => {}}>
                         <Text style={styles.pickerTitle}>Select Category</Text>
@@ -243,9 +209,7 @@ export default function AddExpenseScreen() {
                                     style={[styles.pickerItem, categoryId === c.id && styles.pickerItemSelected]}
                                     onPress={() => { setCategoryId(c.id); setCategoryPickerVisible(false); }}
                                 >
-                                    <Text style={[styles.pickerItemText, categoryId === c.id && styles.pickerItemTextSelected]}>
-                                        {c.name}
-                                    </Text>
+                                    <Text style={[styles.pickerItemText, categoryId === c.id && styles.pickerItemTextSelected]}>{c.name}</Text>
                                 </Pressable>
                             ))}
                         </ScrollView>
@@ -253,13 +217,7 @@ export default function AddExpenseScreen() {
                 </Pressable>
             </Modal>
 
-            {/* Wallet picker */}
-            <Modal
-                visible={walletPickerVisible}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setWalletPickerVisible(false)}
-            >
+            <Modal visible={walletPickerVisible} transparent animationType="slide" onRequestClose={() => setWalletPickerVisible(false)}>
                 <Pressable style={styles.pickerBackdrop} onPress={() => setWalletPickerVisible(false)}>
                     <Pressable style={styles.pickerSheet} onPress={() => {}}>
                         <Text style={styles.pickerTitle}>Select Wallet</Text>
@@ -272,9 +230,7 @@ export default function AddExpenseScreen() {
                                 >
                                     <Text style={[styles.pickerItemText, walletId === w.id && styles.pickerItemTextSelected]}>
                                         {w.name}
-                                        <Text style={styles.walletBalanceHint}>
-                                            {'  '}{w.currency} {w.balance.toFixed(2)}
-                                        </Text>
+                                        <Text style={styles.walletHint}>{'  '}{w.currency} {w.balance.toFixed(2)}</Text>
                                     </Text>
                                 </Pressable>
                             ))}
@@ -304,13 +260,7 @@ const styles = StyleSheet.create({
     saveText: { fontSize: 17, color: '#2563EB', fontWeight: '600', textAlign: 'right' },
     content: { padding: 24, gap: 20 },
     field: { gap: 6 },
-    label: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#374151',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
+    label: { fontSize: 13, fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.5 },
     amountInput: {
         fontSize: 32,
         fontWeight: '700',
@@ -319,30 +269,12 @@ const styles = StyleSheet.create({
         borderBottomColor: '#2563EB',
         paddingVertical: 8,
     },
-    input: {
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 8,
-        padding: 14,
-        justifyContent: 'center',
-    },
+    input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 14, justifyContent: 'center' },
     inputText: { fontSize: 15, color: '#111827' },
     inputPlaceholder: { fontSize: 15, color: '#9CA3AF' },
     iosDatePicker: { alignSelf: 'flex-start', marginLeft: -8 },
-    noWalletBanner: {
-        borderWidth: 1,
-        borderColor: '#FCA5A5',
-        borderRadius: 8,
-        backgroundColor: '#FEF2F2',
-        padding: 14,
-    },
-    noWalletText: { fontSize: 14, color: '#DC2626' },
     error: { color: '#DC2626', fontSize: 14 },
-    pickerBackdrop: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        justifyContent: 'flex-end',
-    },
+    pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
     pickerSheet: {
         backgroundColor: '#fff',
         borderTopLeftRadius: 20,
@@ -351,16 +283,10 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
         maxHeight: '60%',
     },
-    pickerTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#111827',
-        paddingHorizontal: 24,
-        paddingBottom: 16,
-    },
+    pickerTitle: { fontSize: 16, fontWeight: '700', color: '#111827', paddingHorizontal: 24, paddingBottom: 16 },
     pickerItem: { paddingHorizontal: 24, paddingVertical: 14 },
     pickerItemSelected: { backgroundColor: '#EFF6FF' },
     pickerItemText: { fontSize: 15, color: '#111827' },
     pickerItemTextSelected: { color: '#2563EB', fontWeight: '600' },
-    walletBalanceHint: { fontSize: 13, color: '#9CA3AF', fontWeight: '400' },
+    walletHint: { fontSize: 13, color: '#9CA3AF', fontWeight: '400' },
 });

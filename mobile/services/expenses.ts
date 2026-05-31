@@ -30,6 +30,9 @@ export const expenseService = {
     create: (payload: CreateExpensePayload) =>
         api.post('/expenses', payload),
 
+    update: (id: string, payload: CreateExpensePayload) =>
+        api.put(`/expenses/${id}`, payload),
+
     delete: (id: string) =>
         api.delete(`/expenses/${id}`),
 };

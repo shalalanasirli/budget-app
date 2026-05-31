@@ -4,99 +4,79 @@ import {
     Alert,
     Modal,
     Pressable,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { budgetService } from '@/services/budgets';
+import { useRouter } from 'expo-router';
 import { walletService, type Wallet } from '@/services/wallets';
-import BudgetProgressBar from '@/components/BudgetProgressBar';
+import { expenseService, type ExpenseResponse } from '@/services/expenses';
 import { useAuthStore } from '@/store/auth';
 
-export interface BudgetSummary {
-    id: string;
-    categoryId: string;
-    categoryName: string;
-    monthlyLimit: number;
-    spent: number;
-    month: number;
-    year: number;
+function formatDate(dateStr: string): string {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+    });
 }
 
-const MONTH_NAMES = [
-    'January', 'February', 'March', 'April',
-    'May', 'June', 'July', 'August',
-    'September', 'October', 'November', 'December',
-];
-
-function WalletCard({ wallet, symbol }: { wallet: Wallet; symbol: string }) {
+function WalletCard({ wallet }: { wallet: Wallet }) {
     return (
         <View style={styles.walletCard}>
             <Text style={styles.walletCardName} numberOfLines={1}>{wallet.name}</Text>
             <Text style={styles.walletCardBalance}>
-                {symbol} {wallet.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {wallet.balance.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                })}
             </Text>
             <Text style={styles.walletCardCurrency}>{wallet.currency}</Text>
         </View>
     );
 }
 
-export default function HomeScreen() {
+export default function DashboardScreen() {
+    const router = useRouter();
     const queryClient = useQueryClient();
     const currency = useAuthStore((s) => s.user?.currency ?? 'USD');
-    const now = new Date();
-    const [month, setMonth] = useState(now.getMonth() + 1);
-    const [year, setYear] = useState(now.getFullYear());
 
-    // Add wallet modal
     const [addWalletVisible, setAddWalletVisible] = useState(false);
     const [walletName, setWalletName] = useState('');
     const [walletBalance, setWalletBalance] = useState('');
     const [addingWallet, setAddingWallet] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
-    const { data: wallets } = useQuery({
+    const { data: wallets, refetch: refetchWallets } = useQuery({
         queryKey: ['wallets'],
         queryFn: async () => (await walletService.getAll()).data as Wallet[],
     });
 
-    const { data: budgets, isLoading, isError, refetch } = useQuery({
-        queryKey: ['budgets', month, year],
-        queryFn: async () => {
-            const res = await budgetService.getAll({ month, year });
-            return res.data as BudgetSummary[];
-        },
+    const { data: recentExpenses, refetch: refetchExpenses } = useQuery({
+        queryKey: ['expenses', 'recent'],
+        queryFn: async () =>
+            ((await expenseService.getAll({})).data as ExpenseResponse[]).slice(0, 3),
     });
 
-    const totalLimit = budgets?.reduce((s, b) => s + b.monthlyLimit, 0) ?? 0;
-    const totalSpent = budgets?.reduce((s, b) => s + b.spent, 0) ?? 0;
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        await Promise.all([refetchWallets(), refetchExpenses()]);
+        setRefreshing(false);
+    };
 
     const fmt = (n: number) =>
         n.toLocaleString('en-US', { style: 'currency', currency: currency || 'USD' });
 
-    const goToPrev = () => {
-        if (month === 1) { setMonth(12); setYear((y) => y - 1); }
-        else setMonth((m) => m - 1);
-    };
-
-    const goToNext = () => {
-        if (month === 12) { setMonth(1); setYear((y) => y + 1); }
-        else setMonth((m) => m + 1);
-    };
-
     const handleAddWallet = async () => {
         const name = walletName.trim();
         const balance = parseFloat(walletBalance);
-        if (!name) {
-            Alert.alert('Missing name', 'Enter a wallet name.');
-            return;
-        }
-        if (isNaN(balance) || balance < 0) {
-            Alert.alert('Invalid balance', 'Enter a valid starting balance.');
-            return;
-        }
+        if (!name) { Alert.alert('Missing name', 'Enter a wallet name.'); return; }
+        if (isNaN(balance) || balance < 0) { Alert.alert('Invalid balance', 'Enter a valid starting balance.'); return; }
         setAddingWallet(true);
         try {
             await walletService.create(name, balance);
@@ -112,71 +92,70 @@ export default function HomeScreen() {
     };
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            {/* Wallet strip */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.walletStrip}
-                contentContainerStyle={styles.walletStripContent}
-            >
-                {wallets?.map((w) => (
-                    <WalletCard key={w.id} wallet={w} symbol={w.currency} />
-                ))}
-                <Pressable
-                    style={styles.addWalletCard}
-                    onPress={() => setAddWalletVisible(true)}
-                >
-                    <Text style={styles.addWalletIcon}>+</Text>
-                </Pressable>
-            </ScrollView>
-
-            {/* Month nav */}
-            <View style={styles.monthNav}>
-                <Pressable onPress={goToPrev} style={styles.navBtn}>
-                    <Text style={styles.navArrow}>‹</Text>
-                </Pressable>
-                <Text style={styles.monthLabel}>{MONTH_NAMES[month - 1]} {year}</Text>
-                <Pressable onPress={goToNext} style={styles.navBtn}>
-                    <Text style={styles.navArrow}>›</Text>
+        <SafeAreaView style={styles.safe} edges={['top']}>
+            {/* Top bar */}
+            <View style={styles.topBar}>
+                <Text style={styles.screenTitle}>Dashboard</Text>
+                <Pressable onPress={() => router.push('/settings')} hitSlop={8}>
+                    <Text style={styles.settingsIcon}>⚙</Text>
                 </Pressable>
             </View>
 
-            {totalLimit > 0 && (
-                <View style={styles.summary}>
-                    <Text style={styles.summarySpent}>{fmt(totalSpent)}</Text>
-                    <Text style={styles.summaryLabel}>of {fmt(totalLimit)} budget</Text>
-                </View>
-            )}
-
-            {isLoading && <ActivityIndicator style={styles.loader} color="#2563EB" />}
-
-            {isError && (
-                <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>Failed to load budgets.</Text>
-                    <Pressable onPress={() => refetch()}>
-                        <Text style={styles.retryText}>Retry</Text>
+            <ScrollView
+                contentContainerStyle={styles.content}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#2563EB" />
+                }
+            >
+                {/* Wallet strip */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.walletStrip}
+                    contentContainerStyle={styles.walletStripContent}
+                >
+                    {wallets?.map((w) => <WalletCard key={w.id} wallet={w} />)}
+                    <Pressable
+                        style={styles.addWalletCard}
+                        onPress={() => setAddWalletVisible(true)}
+                    >
+                        <Text style={styles.addWalletIcon}>+</Text>
                     </Pressable>
-                </View>
-            )}
+                </ScrollView>
 
-            {!isLoading && !isError && budgets?.length === 0 && (
-                <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>No budgets set for this month.</Text>
-                    <Text style={styles.emptySubtext}>
-                        Add budgets to start tracking your spending.
-                    </Text>
-                </View>
-            )}
+                {/* Recent expenses */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Recent Expenses</Text>
+                        <Pressable onPress={() => router.push('/history')}>
+                            <Text style={styles.seeAll}>See all ›</Text>
+                        </Pressable>
+                    </View>
 
-            {budgets?.map((b) => (
-                <BudgetProgressBar
-                    key={b.id}
-                    categoryName={b.categoryName}
-                    spent={b.spent}
-                    limit={b.monthlyLimit}
-                />
-            ))}
+                    {!recentExpenses || recentExpenses.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyText}>No expenses yet.</Text>
+                            <Text style={styles.emptySubtext}>Tap + to log your first one.</Text>
+                        </View>
+                    ) : (
+                        <View style={styles.expenseList}>
+                            {recentExpenses.map((e) => (
+                                <View key={e.id} style={styles.expenseRow}>
+                                    <View style={styles.expenseLeft}>
+                                        <Text style={styles.expenseMerchant} numberOfLines={1}>
+                                            {e.merchant ?? e.categoryName}
+                                        </Text>
+                                        <Text style={styles.expenseMeta}>
+                                            {e.categoryName} · {formatDate(e.date)}
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.expenseAmount}>{fmt(e.amount)}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </View>
+            </ScrollView>
 
             {/* Add wallet modal */}
             <Modal
@@ -185,13 +164,9 @@ export default function HomeScreen() {
                 animationType="slide"
                 onRequestClose={() => setAddWalletVisible(false)}
             >
-                <Pressable
-                    style={styles.modalBackdrop}
-                    onPress={() => setAddWalletVisible(false)}
-                >
+                <Pressable style={styles.modalBackdrop} onPress={() => setAddWalletVisible(false)}>
                     <Pressable style={styles.modalSheet} onPress={() => {}}>
                         <Text style={styles.modalTitle}>New Wallet</Text>
-
                         <Text style={styles.inputLabel}>Name</Text>
                         <TextInput
                             style={styles.modalInput}
@@ -201,7 +176,6 @@ export default function HomeScreen() {
                             placeholderTextColor="#9CA3AF"
                             autoFocus
                         />
-
                         <Text style={styles.inputLabel}>Starting Balance</Text>
                         <TextInput
                             style={styles.modalInput}
@@ -211,145 +185,98 @@ export default function HomeScreen() {
                             placeholderTextColor="#9CA3AF"
                             keyboardType="decimal-pad"
                         />
-
                         <Pressable
                             style={[styles.modalBtn, addingWallet && styles.disabled]}
                             onPress={handleAddWallet}
                             disabled={addingWallet}
                         >
-                            {addingWallet ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={styles.modalBtnText}>Add Wallet</Text>
-                            )}
+                            {addingWallet
+                                ? <ActivityIndicator color="#fff" />
+                                : <Text style={styles.modalBtnText}>Add Wallet</Text>}
                         </Pressable>
                     </Pressable>
                 </Pressable>
             </Modal>
-        </ScrollView>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
+    safe: { flex: 1, backgroundColor: '#F9FAFB' },
+    topBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        backgroundColor: '#F9FAFB',
     },
-    content: {
-        paddingHorizontal: 24,
-        paddingBottom: 32,
-    },
+    screenTitle: { fontSize: 22, fontWeight: '700', color: '#111827' },
+    settingsIcon: { fontSize: 22, color: '#6B7280' },
+    content: { paddingBottom: 100 },
     // Wallet strip
-    walletStrip: {
-        marginHorizontal: -24,
-        marginTop: 16,
-        flexGrow: 0,
-    },
-    walletStripContent: {
-        paddingHorizontal: 24,
-        gap: 12,
-        paddingBottom: 4,
-    },
+    walletStrip: { flexGrow: 0 },
+    walletStripContent: { paddingHorizontal: 20, paddingBottom: 8, gap: 12 },
     walletCard: {
-        width: 148,
+        width: 152,
+        minHeight: 100,
         backgroundColor: '#1E3A8A',
         borderRadius: 16,
         padding: 16,
         justifyContent: 'space-between',
-        minHeight: 96,
     },
-    walletCardName: {
-        fontSize: 13,
-        color: 'rgba(255,255,255,0.75)',
-        fontWeight: '500',
-        marginBottom: 8,
-    },
-    walletCardBalance: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#fff',
-    },
-    walletCardCurrency: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.6)',
-        marginTop: 4,
-    },
+    walletCardName: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+    walletCardBalance: { fontSize: 22, fontWeight: '700', color: '#fff', marginTop: 8 },
+    walletCardCurrency: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4 },
     addWalletCard: {
-        width: 148,
-        minHeight: 96,
+        width: 152,
+        minHeight: 100,
         borderRadius: 16,
         borderWidth: 2,
         borderColor: '#E5E7EB',
         borderStyle: 'dashed',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#fff',
     },
-    addWalletIcon: {
-        fontSize: 32,
-        color: '#9CA3AF',
-        lineHeight: 36,
+    addWalletIcon: { fontSize: 32, color: '#9CA3AF', lineHeight: 36 },
+    // Recent expenses
+    section: { marginTop: 24, paddingHorizontal: 20 },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
     },
-    // Month nav
-    monthNav: {
+    sectionTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
+    seeAll: { fontSize: 14, color: '#2563EB', fontWeight: '500' },
+    emptyState: { alignItems: 'center', paddingVertical: 32, gap: 6 },
+    emptyText: { fontSize: 15, color: '#374151', fontWeight: '500' },
+    emptySubtext: { fontSize: 13, color: '#9CA3AF' },
+    expenseList: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 1,
+    },
+    expenseRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 20,
-    },
-    navBtn: {
-        padding: 8,
-    },
-    navArrow: {
-        fontSize: 24,
-        color: '#2563EB',
-        lineHeight: 28,
-    },
-    monthLabel: {
-        fontSize: 17,
-        fontWeight: '600',
-        color: '#111827',
-    },
-    summary: {
-        alignItems: 'center',
-        paddingVertical: 20,
-        marginBottom: 8,
-        borderRadius: 12,
-        backgroundColor: '#F9FAFB',
-    },
-    summarySpent: {
-        fontSize: 32,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    summaryLabel: {
-        fontSize: 14,
-        color: '#6B7280',
-        marginTop: 4,
-    },
-    loader: {
-        marginTop: 40,
-    },
-    emptyState: {
-        alignItems: 'center',
-        paddingTop: 60,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F9FAFB',
         gap: 8,
     },
-    emptyText: {
-        fontSize: 15,
-        color: '#374151',
-        fontWeight: '500',
-    },
-    emptySubtext: {
-        fontSize: 13,
-        color: '#9CA3AF',
-        textAlign: 'center',
-    },
-    retryText: {
-        fontSize: 14,
-        color: '#2563EB',
-        marginTop: 4,
-    },
+    expenseLeft: { flex: 1, gap: 3 },
+    expenseMerchant: { fontSize: 15, fontWeight: '500', color: '#111827' },
+    expenseMeta: { fontSize: 13, color: '#9CA3AF' },
+    expenseAmount: { fontSize: 15, fontWeight: '600', color: '#111827' },
     // Add wallet modal
     modalBackdrop: {
         flex: 1,
@@ -364,12 +291,7 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
         gap: 8,
     },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#111827',
-        marginBottom: 8,
-    },
+    modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8 },
     inputLabel: {
         fontSize: 12,
         fontWeight: '600',

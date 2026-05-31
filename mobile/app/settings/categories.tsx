@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { categoryService, type Category } from '@/services/categories';
+import SwipeableRow from '@/components/SwipeableRow';
 
 export default function CategoriesScreen() {
     const router = useRouter();
@@ -94,23 +95,23 @@ export default function CategoriesScreen() {
                     keyboardShouldPersistTaps="handled"
                 >
                     <View style={styles.card}>
-                        {categories.map((c) => (
-                            <View key={c.id} style={styles.row}>
-                                <Text style={styles.name}>{c.name}</Text>
-                                {c.isDefault ? (
+                        {categories.map((c) =>
+                            c.isDefault ? (
+                                <View key={c.id} style={styles.row}>
+                                    <Text style={styles.name}>{c.name}</Text>
                                     <Text style={styles.badge}>Default</Text>
-                                ) : deletingId === c.id ? (
-                                    <ActivityIndicator color="#DC2626" size="small" />
-                                ) : (
-                                    <Pressable
-                                        onPress={() => handleDelete(c.id, c.name)}
-                                        hitSlop={8}
-                                    >
-                                        <Text style={styles.deleteText}>✕</Text>
-                                    </Pressable>
-                                )}
-                            </View>
-                        ))}
+                                </View>
+                            ) : (
+                                <SwipeableRow key={c.id} onDelete={() => handleDelete(c.id, c.name)}>
+                                    <View style={[styles.row, styles.rowBg]}>
+                                        <Text style={styles.name}>{c.name}</Text>
+                                        {deletingId === c.id && (
+                                            <ActivityIndicator color="#DC2626" size="small" />
+                                        )}
+                                    </View>
+                                </SwipeableRow>
+                            ),
+                        )}
 
                         <View style={styles.addRow}>
                             <TextInput
@@ -177,6 +178,7 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
     },
+    rowBg: { backgroundColor: '#fff', paddingHorizontal: 16 },
     name: { fontSize: 15, color: '#111827' },
     badge: {
         fontSize: 11,

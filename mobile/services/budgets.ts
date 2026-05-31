@@ -10,4 +10,10 @@ export const budgetService = {
         month: number;
         year: number;
     }) => api.post('/budgets', payload),
+
+    update: (id: string, monthlyLimit: number) =>
+        api.put(`/budgets/${id}`, { monthlyLimit }),
+
+    delete: (id: string) =>
+        api.delete(`/budgets/${id}`),
 };

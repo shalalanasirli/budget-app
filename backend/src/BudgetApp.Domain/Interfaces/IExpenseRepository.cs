@@ -7,5 +7,6 @@ public interface IExpenseRepository
     Task<IEnumerable<Expense>> GetForUserAsync(Guid userId, Guid? categoryId, int? month, int? year);
     Task<Expense?> GetByIdAsync(Guid id, Guid userId);
     Task<Expense> CreateAsync(Expense expense);
+    Task SaveAsync();
     Task DeleteAsync(Expense expense);
 }

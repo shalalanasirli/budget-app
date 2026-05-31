@@ -43,6 +43,8 @@ public class ExpenseRepository : IExpenseRepository
         return expense;
     }
 
+    public Task SaveAsync() => _context.SaveChangesAsync();
+
     public Task DeleteAsync(Expense expense)
     {
         _context.Expenses.Remove(expense);
