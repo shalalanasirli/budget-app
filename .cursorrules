@@ -1,0 +1,89 @@
+You are working on a budgeting-first expense tracking application.
+
+## Tech Stack (fixed)
+- Frontend: React Native (Expo) + TypeScript
+- Backend: ASP.NET Core Web API
+- Database: PostgreSQL
+- File Storage: Azure Blob Storage (or compatible object storage like S3)
+- ORM: Entity Framework Core
+
+## Product Philosophy
+- The product is NOT a financial analytics tool.
+- The goal is immediate budget awareness and spending control.
+- Every feature must improve either:
+  - speed of expense entry OR
+  - clarity of budget status
+- Avoid complexity unless it directly improves user value.
+
+## Architecture Rules
+- Use layered architecture:
+  Controllers → Services → Repositories
+- No business logic in controllers.
+- Use DTOs for all API communication.
+- Do not access database directly from controllers.
+
+## Data Rules
+- Store all receipts and images in object storage only.
+- Never store images in database.
+- Store only URLs and metadata in database.
+- Use decimal for all monetary values.
+
+## AI Usage Rules
+- AI is ONLY used for OCR extraction (merchant, amount, category suggestion).
+- AI must NOT provide financial advice or insights.
+- All AI-generated data must be confirmed by the user before saving.
+
+## Mobile Rules
+- Use Expo managed workflow only.
+- Keep UI simple and minimal.
+- Avoid unnecessary global state.
+
+## Prohibited Complexity
+- No microservices
+- No event-driven architecture (Kafka, etc.)
+- No blockchain or crypto features
+- No over-engineered financial analytics
+- No autonomous AI decisions
+
+## Code Quality
+- Prefer simplicity over abstraction.
+- Avoid premature optimization.
+- Keep functions small and readable.
+
+## Simplicity & Product Discipline
+
+- The primary goal is to ship a working MVP, not to build a perfect or enterprise-grade system.
+- Always prefer the simplest working solution over abstract, extensible, or "future-proof" designs.
+- Do NOT introduce features, abstractions, folders, patterns, or dependencies that are not immediately required for the current step.
+- If a requirement has not been explicitly encountered yet in the project, assume it does NOT exist.
+- Avoid speculative engineering ("we might need this later").
+
+
+## Git Ignore Discipline (Very Important)
+
+- Always treat `.gitignore` as an actively maintained part of the project, not a static template.
+- Before introducing new files, tools, or build outputs, check whether they should be ignored.
+- If a new type of generated file appears during development, it MUST be added to `.gitignore` immediately if it should not be tracked.
+
+### Rules:
+- Do NOT add unnecessary or preemptive `.gitignore` entries for tools or environments not currently used.
+- Only include ignores for technologies that already exist in the project.
+- Keep `.gitignore` minimal and directly relevant to current implementation.
+
+## Pre-Commit Safety Check
+
+Before finalizing any meaningful code change:
+
+- Verify whether new files are:
+  - build artifacts
+  - generated files
+  - logs
+  - environment secrets
+  - dependency folders
+
+- If any such files are introduced or referenced, ensure `.gitignore` is updated accordingly.
+
+## Core Principle
+
+- Optimize for a functioning product first.
+- Complexity is only allowed when it solves an existing, real problem in the codebase.
