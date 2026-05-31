@@ -1,8 +1,9 @@
 # macOS
 .DS_Store
 
-# JetBrains IDE
+# IDE / AI tools
 .idea/
+mobile/.claude/
 
 # Environment / secrets
 .env
@@ -17,3 +18,17 @@ backend/**/bin/
 backend/**/obj/
 backend/**/appsettings.Development.json
 
+# Expo / React Native
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/ios/
+mobile/android/
+mobile/.kotlin/
+mobile/expo-env.d.ts
+mobile/.metro-health-check*
+mobile/*.tsbuildinfo
+mobile/npm-debug.*
+mobile/yarn-debug.*
+mobile/yarn-error.*

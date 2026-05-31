@@ -107,3 +107,8 @@ Generated artifacts should be created by tooling, not handwritten by AI.
 - Always include trailing commas in multi-line objects, arrays, function parameters, function arguments, imports, and exports when supported by the language and formatter.
 - Generated code must follow this rule consistently.
 - Prefer formatter-compatible syntax so formatting tools do not remove the commas.
+
+## Import Path Rules
+
+- Always use path aliases instead of relative imports for project files.
+- Prefer `@/` alias for all imports from the project source root (e.g., `src/`).
