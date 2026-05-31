@@ -45,6 +45,14 @@ function AuthGuard() {
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+            <Stack.Screen
+                name="add-expense"
+                options={{ presentation: 'modal', title: 'Add Expense' }}
+            />
+            <Stack.Screen
+                name="scan-receipt"
+                options={{ presentation: 'modal', title: 'Scan Receipt' }}
+            />
         </Stack>
     );
 }
