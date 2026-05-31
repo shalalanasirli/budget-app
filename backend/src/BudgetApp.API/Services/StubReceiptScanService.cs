@@ -11,7 +11,7 @@ public class StubReceiptScanService : IReceiptScanService
         {
             Merchant = null,
             Amount = null,
-            SuggestedCategoryId = DefaultCategories.OtherId
+            SuggestedCategoryId = DefaultCategories.OtherId,
         });
     }
 }

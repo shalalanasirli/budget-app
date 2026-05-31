@@ -87,3 +87,23 @@ Before finalizing any meaningful code change:
 
 - Optimize for a functioning product first.
 - Complexity is only allowed when it solves an existing, real problem in the codebase.
+
+## Generated Files Rule
+
+- Never manually create generated files.
+- Modify source definitions only.
+- Provide the command required to regenerate artifacts.
+
+Examples:
+- EF Core migrations → use `dotnet ef migrations add`
+- OpenAPI clients → provide generator command
+- ORM-generated code → provide generator command
+- SDK/client generation → provide generator command
+
+Generated artifacts should be created by tooling, not handwritten by AI.
+
+## Code Style: Trailing Commas
+
+- Always include trailing commas in multi-line objects, arrays, function parameters, function arguments, imports, and exports when supported by the language and formatter.
+- Generated code must follow this rule consistently.
+- Prefer formatter-compatible syntax so formatting tools do not remove the commas.

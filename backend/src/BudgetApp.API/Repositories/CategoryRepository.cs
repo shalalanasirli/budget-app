@@ -5,14 +5,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BudgetApp.API.Repositories;
 
-public class CategoryRepository(AppDbContext context) : ICategoryRepository
+public class CategoryRepository : ICategoryRepository
 {
-    public Task<IEnumerable<Category>> GetAllForUserAsync(Guid userId) =>
-        Task.FromResult<IEnumerable<Category>>(
-            context.Categories
-                   .Where(c => c.IsDefault || c.UserId == userId)
-                   .AsEnumerable());
+    private readonly AppDbContext _context;
+
+    public CategoryRepository(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<IEnumerable<Category>> GetAllForUserAsync(Guid userId) =>
+        await _context.Categories
+                      .Where(c => c.IsDefault || c.UserId == userId)
+                      .ToListAsync();
 
     public Task<Category?> GetByIdAsync(Guid id) =>
-        context.Categories.FirstOrDefaultAsync(c => c.Id == id);
+        _context.Categories.FirstOrDefaultAsync(c => c.Id == id);
 }
